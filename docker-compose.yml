@@ -1,0 +1,6 @@
+services:
+  psicologia-aplicada:
+    image: psicologia-aplicada
+    container_name: psicologia-aplicada-container
+    ports:
+      - "8080:8080"
