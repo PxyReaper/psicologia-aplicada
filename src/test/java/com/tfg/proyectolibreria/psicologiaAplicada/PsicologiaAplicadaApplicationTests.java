@@ -9,7 +9,6 @@ class PsicologiaAplicadaApplicationTests {
     @Test
     void contextLoads() {
         ApplicationModules modules = ApplicationModules.of(PsicologiaAplicadaApplication.class);
-        modules.forEach(System.out::println); // muestra los módulos detectados
         modules.verify();
     }
 
