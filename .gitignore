@@ -1,6 +1,6 @@
 .env
 HELP.md
-./psicologiaaplicada-495911-e202675ec73d.json
+psicologiaaplicada-495911-e202675ec73d.json
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
