@@ -11,6 +11,14 @@ public class GoogleCalendarProperties {
 
     private String applicationName;
 
+    private String calendarName;
+
+    private String baseUrl;
+
+    private String scope;
+
+    private String timezone;
+
     public String getCredentialsPath() {
         return credentialsPath;
     }
@@ -33,5 +41,37 @@ public class GoogleCalendarProperties {
 
     public void setApplicationName(String applicationName) {
         this.applicationName = applicationName;
+    }
+
+    public String getCalendarName() {
+        return calendarName;
+    }
+
+    public void setCalendarName(String calendarName) {
+        this.calendarName = calendarName;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 }

@@ -19,3 +19,7 @@ google:
     credentials-path: ${GOOGLE_CALENDAR_CREDENTIALS_PATH}
     calendar-id: ${GOOGLE_CALENDAR_ID}
     application-name: ${GOOGLE_CALENDAR_APPLICATION_NAME}
+    calendar-name: ${GOOGLE_CALENDAR_NAME:Psicologia Aplicada}
+    base-url: ${GOOGLE_CALENDAR_BASE_URL:https://www.googleapis.com/calendar/v3}
+    scope: ${GOOGLE_CALENDAR_SCOPE:https://www.googleapis.com/auth/calendar}
+    timezone: ${GOOGLE_CALENDAR_TIMEZONE:Europe/Madrid}
