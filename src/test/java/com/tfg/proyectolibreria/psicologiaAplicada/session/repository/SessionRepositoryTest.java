@@ -26,7 +26,7 @@ class SessionRepositoryTest {
 
     @Test
     void save_shouldPersistSession() {
-        SessionEntity session = new SessionEntity(null, LocalDateTime.now(), "obs", "summary", false, 1L);
+        SessionEntity session = new SessionEntity(null, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "obs", "summary", false, 1L);
         SessionEntity saved = sessionRepository.save(session);
         entityManager.flush();
 
@@ -35,9 +35,9 @@ class SessionRepositoryTest {
 
     @Test
     void findByPatientId_shouldReturnSessionsForPatient() {
-        SessionEntity session1 = new SessionEntity(null, LocalDateTime.now(), "obs1", "summary1", false, 1L);
-        SessionEntity session2 = new SessionEntity(null, LocalDateTime.now(), "obs2", "summary2", false, 1L);
-        SessionEntity session3 = new SessionEntity(null, LocalDateTime.now(), "obs3", "summary3", false, 2L);
+        SessionEntity session1 = new SessionEntity(null, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "obs1", "summary1", false, 1L);
+        SessionEntity session2 = new SessionEntity(null, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "obs2", "summary2", false, 1L);
+        SessionEntity session3 = new SessionEntity(null, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "obs3", "summary3", false, 2L);
         entityManager.persist(session1);
         entityManager.persist(session2);
         entityManager.persist(session3);

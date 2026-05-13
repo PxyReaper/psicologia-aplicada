@@ -4,3 +4,7 @@ services:
     container_name: psicologia-aplicada-container
     ports:
       - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./psicologiaaplicada-495911-e202675ec73d.json:/app/psicologiaaplicada-495911-e202675ec73d.json

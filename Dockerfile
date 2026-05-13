@@ -16,6 +16,7 @@ WORKDIR /app
 
 # Copia el ejecutable nativo (sin extensión .jar)
 COPY --from=builder /app/target/psicologia-aplicada /app/
+COPY psicologiaaplicada-495911-e202675ec73d.json /app/
 
 EXPOSE 8080
 

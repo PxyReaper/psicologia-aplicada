@@ -7,6 +7,15 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: jdbc:mysql://localhost:3306/psicologia_aplicada
-    username: root
-    password: root
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+google:
+  calendar:
+    credentials-path: ${GOOGLE_CALENDAR_CREDENTIALS_PATH}
+    calendar-id: ${GOOGLE_CALENDAR_ID}
+    application-name: ${GOOGLE_CALENDAR_APPLICATION_NAME}

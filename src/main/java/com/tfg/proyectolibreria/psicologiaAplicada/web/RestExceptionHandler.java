@@ -19,4 +19,9 @@ public class RestExceptionHandler {
         body.put("message", ex.getMessage());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Void> handleException(Exception e){
+        return ResponseEntity.internalServerError().build();
+    }
 }

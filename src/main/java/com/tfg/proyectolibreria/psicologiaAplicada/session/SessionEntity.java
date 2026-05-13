@@ -14,6 +14,7 @@ public class SessionEntity {
     private Long id;
 
     private LocalDateTime sessionDate;
+    private LocalDateTime sessionDateEnd;
     private String observation;
     private String observationSummary;
     private boolean pay;
@@ -21,9 +22,10 @@ public class SessionEntity {
     @Column(name = "id_patient")
     private Long patientId;
 
-    public SessionEntity(Long id, LocalDateTime sessionDate, String observation, String observationSummary, boolean pay, Long patientId) {
+    public SessionEntity(Long id, LocalDateTime sessionDate, LocalDateTime sessionDateEnd, String observation, String observationSummary, boolean pay, Long patientId) {
         this.id = id;
         this.sessionDate = sessionDate;
+        this.sessionDateEnd = sessionDateEnd;
         this.observation = observation;
         this.observationSummary = observationSummary;
         this.pay = pay;
@@ -36,6 +38,10 @@ public class SessionEntity {
 
     public LocalDateTime getSessionDate() {
         return sessionDate;
+    }
+
+    public LocalDateTime getSessionDateEnd() {
+        return sessionDateEnd;
     }
 
     public String getObservation() {
