@@ -1,5 +1,6 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.web;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class RestExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -22,6 +24,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Void> handleException(Exception e){
+        log.error("No handled error {}", e.getMessage());
         return ResponseEntity.internalServerError().build();
     }
 }
