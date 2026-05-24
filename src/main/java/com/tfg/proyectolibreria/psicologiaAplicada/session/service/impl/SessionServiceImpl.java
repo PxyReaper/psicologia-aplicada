@@ -1,12 +1,11 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.session.service.impl;
 
+import com.tfg.proyectolibreria.psicologiaAplicada.calendar.CalendarAsyncService;
 import com.tfg.proyectolibreria.psicologiaAplicada.kernel.PatientAccess;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.SessionEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.dto.SessionRequestDTO;
-import com.tfg.proyectolibreria.psicologiaAplicada.session.event.SessionCreatedEvent;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.repository.SessionRepository;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.service.SessionService;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,20 +13,21 @@ public class SessionServiceImpl implements SessionService {
 
     private final SessionRepository sessionRepository;
     private final PatientAccess patientAccess;
-    private final ApplicationEventPublisher eventPublisher;
+    private final CalendarAsyncService calendarAsyncService;
 
     public SessionServiceImpl(SessionRepository sessionRepository,
                               PatientAccess patientAccess,
-                              ApplicationEventPublisher eventPublisher) {
+                              CalendarAsyncService calendarAsyncService) {
         this.sessionRepository = sessionRepository;
         this.patientAccess = patientAccess;
-        this.eventPublisher = eventPublisher;
+        this.calendarAsyncService = calendarAsyncService;
     }
 
     @Override
     public void save(SessionRequestDTO requestDTO) {
         var patient = patientAccess.findById(requestDTO.idPatient())
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+
         SessionEntity session = new SessionEntity(
                 null,
                 requestDTO.dateSession(),
@@ -37,14 +37,64 @@ public class SessionServiceImpl implements SessionService {
                 false,
                 requestDTO.idPatient()
         );
-        sessionRepository.save(session);
+
+        SessionEntity saved = sessionRepository.save(session);
 
         String patientFullName = patient.getName() + " " + patient.getSurname();
-        eventPublisher.publishEvent(new SessionCreatedEvent(
-                requestDTO.idPatient(),
+        calendarAsyncService.createAndStoreEvent(
+                saved.getId(),
                 patientFullName,
                 requestDTO.dateSession(),
                 requestDTO.dateSessionEnd()
-        ));
+        );
+    }
+
+    @Override
+    public void update(Long id, SessionRequestDTO requestDTO) {
+        SessionEntity existing = sessionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        var patient = patientAccess.findById(requestDTO.idPatient())
+                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+
+        var oldPatient = patientAccess.findById(existing.getPatientId());
+
+        SessionEntity updated = new SessionEntity(
+                id,
+                requestDTO.dateSession(),
+                requestDTO.dateSessionEnd(),
+                requestDTO.observatory(),
+                requestDTO.observatorySummary(),
+                existing.isPay(),
+                requestDTO.idPatient()
+        );
+
+        sessionRepository.save(updated);
+
+        String patientFullName = patient.getName() + " " + patient.getSurname();
+        String oldPatientFullName = oldPatient.map(p -> p.getName() + " " + p.getSurname()).orElse(patientFullName);
+
+        calendarAsyncService.updateAndStoreEvent(
+                id,
+                patientFullName,
+                requestDTO.dateSession(),
+                requestDTO.dateSessionEnd(),
+                existing.getGoogleEventId(),
+                oldPatientFullName,
+                existing.getSessionDate(),
+                existing.getSessionDateEnd()
+        );
+    }
+
+    @Override
+    public void delete(Long id) {
+        SessionEntity session = sessionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        String eventId = session.getGoogleEventId();
+
+        sessionRepository.deleteById(id);
+
+        calendarAsyncService.deleteEvent(eventId);
     }
 }

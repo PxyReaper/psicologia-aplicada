@@ -4,10 +4,7 @@ import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestD
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.service.PatientsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,7 +19,17 @@ public class PatientsController {
     public ResponseEntity<Void> save(@RequestBody PatientsRequestDTO patientsRequestDTO) throws URISyntaxException {
          patientsService.save(patientsRequestDTO);
          return ResponseEntity.created(new URI("/api/patients")).build();
-
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody PatientsRequestDTO patientsRequestDTO) {
+        patientsService.update(id, patientsRequestDTO);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/discharge")
+    public ResponseEntity<Void> discharge(@PathVariable Long id) {
+        patientsService.discharge(id);
+        return ResponseEntity.ok().build();
+    }
 }

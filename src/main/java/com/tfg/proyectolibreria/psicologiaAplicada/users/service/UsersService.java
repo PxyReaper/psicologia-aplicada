@@ -8,5 +8,5 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 @NamedInterface
 public interface UsersService extends UserDetailsService {
 
-    UsersEntity register(RegisterRequest request);
+    void register(RegisterRequest request);
 }

@@ -4,6 +4,9 @@ import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestD
 
 public interface PatientsService {
 
-    public void save(PatientsRequestDTO requestDTO);
+    void save(PatientsRequestDTO requestDTO);
 
+    void update(Long id, PatientsRequestDTO requestDTO);
+
+    void discharge(Long id);
 }

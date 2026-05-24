@@ -76,6 +76,30 @@ public class GoogleCalendarApiClient {
     }
 
     /**
+     * GET /calendars/{calendarId}/events?timeMin={timeMin}&timeMax={timeMax}
+     * Lists events in the specified time range.
+     */
+    public JsonNode listEvents(String calendarId, String timeMin, String timeMax) {
+        String responseBody = restClient.get()
+                .uri("/calendars/{calendarId}/events?timeMin={timeMin}&timeMax={timeMax}&singleEvents=true",
+                        calendarId, timeMin, timeMax)
+                .retrieve()
+                .body(String.class);
+        return parseJson(responseBody);
+    }
+
+    /**
+     * DELETE /calendars/{calendarId}/events/{eventId}
+     * Deletes an event from the specified calendar.
+     */
+    public void deleteEvent(String calendarId, String eventId) {
+        restClient.delete()
+                .uri("/calendars/{calendarId}/events/{eventId}", calendarId, eventId)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /**
      * Sends a POST request with a JSON body to the given URI and returns the parsed response.
      */
     private JsonNode postJson(String uri, ObjectNode body, Object... uriVariables) {

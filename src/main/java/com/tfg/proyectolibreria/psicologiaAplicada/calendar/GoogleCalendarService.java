@@ -5,7 +5,11 @@ import java.util.List;
 
 public interface GoogleCalendarService {
 
-    void createSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);
+    String createSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);
+
+    void deleteSessionEvent(String eventId);
+
+    void deleteSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);
 
     List<String> listAccessibleCalendars();
 }

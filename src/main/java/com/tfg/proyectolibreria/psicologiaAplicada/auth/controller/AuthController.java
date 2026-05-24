@@ -3,7 +3,6 @@ package com.tfg.proyectolibreria.psicologiaAplicada.auth.controller;
 import com.tfg.proyectolibreria.psicologiaAplicada.auth.dto.AuthRequest;
 import com.tfg.proyectolibreria.psicologiaAplicada.auth.dto.AuthResponse;
 import com.tfg.proyectolibreria.psicologiaAplicada.users.dto.RegisterRequest;
-import com.tfg.proyectolibreria.psicologiaAplicada.users.UsersEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.users.service.UsersService;
 import com.tfg.proyectolibreria.psicologiaAplicada.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +35,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UsersEntity> register(@RequestBody RegisterRequest request) {
-        UsersEntity user = usersService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    public ResponseEntity<Void> register(@RequestBody RegisterRequest request) {
+        usersService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }

@@ -31,18 +31,71 @@ public class GoogleCalendarServiceImpl implements GoogleCalendarService {
     /**
      * Creates a Google Calendar event for a therapy session.
      * Resolves or creates the "Psicologia Aplicada" calendar, then inserts the event.
+     * Returns the event ID from Google Calendar.
      */
     @Override
-    public void createSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
+    public String createSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
         try {
             String calendarId = resolveOrCreateCalendar();
             ObjectNode eventNode = buildEventNode(patientFullName, sessionDateTime, sessionDateTimeEnd);
 
-            apiClient.insertEvent(calendarId, eventNode);
+            JsonNode created = apiClient.insertEvent(calendarId, eventNode);
+            String eventId = created.get("id").asText();
 
-            log.info("Calendar event created for session: {} from {} to {}", patientFullName, sessionDateTime, sessionDateTimeEnd);
+            log.info("Calendar event created for session: {} (eventId: {})", patientFullName, eventId);
+            return eventId;
         } catch (Exception e) {
             log.error("Failed to create calendar event for session: {}", patientFullName, e);
+            return null;
+        }
+    }
+
+    /**
+     * Deletes a Google Calendar event by its event ID.
+     */
+    @Override
+    public void deleteSessionEvent(String eventId) {
+        try {
+            String calendarId = resolveOrCreateCalendar();
+            apiClient.deleteEvent(calendarId, eventId);
+            log.info("Deleted calendar event: {}", eventId);
+        } catch (Exception e) {
+            log.error("Failed to delete calendar event: {}", eventId, e);
+        }
+    }
+
+    /**
+     * Deletes a Google Calendar event by searching for it on the session date
+     * matching the patient's full name. Used as fallback when no eventId is stored.
+     */
+    @Override
+    public void deleteSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
+        try {
+            String calendarId = resolveOrCreateCalendar();
+            ZoneId zoneId = ZoneId.of(properties.getTimezone());
+
+            OffsetDateTime dayStart = sessionDateTime.toLocalDate().atStartOfDay().atZone(zoneId).toOffsetDateTime();
+            OffsetDateTime dayEnd = sessionDateTime.toLocalDate().plusDays(1).atStartOfDay().atZone(zoneId).toOffsetDateTime();
+
+            String timeMin = dayStart.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            String timeMax = dayEnd.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+            JsonNode events = apiClient.listEvents(calendarId, timeMin, timeMax);
+            JsonNode items = events.get("items");
+
+            if (items != null && items.isArray()) {
+                String expectedSummary = "Sesi\u00f3n: " + patientFullName;
+                for (JsonNode item : items) {
+                    String summary = item.has("summary") ? item.get("summary").asText() : "";
+                    if (expectedSummary.equals(summary)) {
+                        String eventId = item.get("id").asText();
+                        apiClient.deleteEvent(calendarId, eventId);
+                        log.info("Deleted calendar event (fallback): {} (eventId: {})", patientFullName, eventId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to delete calendar event (fallback) for session: {}", patientFullName, e);
         }
     }
 

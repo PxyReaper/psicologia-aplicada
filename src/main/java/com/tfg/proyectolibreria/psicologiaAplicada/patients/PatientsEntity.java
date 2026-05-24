@@ -41,4 +41,24 @@ public class PatientsEntity implements Patient {
     public String getSurname() {
         return surname;
     }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public LocalDate getBirthDay() {
+        return birthDay;
+    }
+
+    public String getCellPhone() {
+        return cellPhone;
+    }
+
+    public Genre getGenre() {
+        return genre;
+    }
 }

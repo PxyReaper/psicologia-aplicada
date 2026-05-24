@@ -44,8 +44,8 @@ public class SecurityConfig {
                 .userDetailsService(usersService)
                 .authorizeHttpRequests((authorizeRequests) ->
                         authorizeRequests
-                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/register").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/auth/register").hasRole("ADMIN")
                                 .anyRequest().hasAnyRole("ADMIN", "PSYCHOLOGIST")
 
                 ).formLogin(AbstractHttpConfigurer::disable)

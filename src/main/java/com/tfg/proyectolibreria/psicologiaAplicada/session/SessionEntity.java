@@ -22,6 +22,8 @@ public class SessionEntity {
     @Column(name = "id_patient")
     private Long patientId;
 
+    private String googleEventId;
+
     public SessionEntity(Long id, LocalDateTime sessionDate, LocalDateTime sessionDateEnd, String observation, String observationSummary, boolean pay, Long patientId) {
         this.id = id;
         this.sessionDate = sessionDate;
@@ -58,5 +60,13 @@ public class SessionEntity {
 
     public Long getPatientId() {
         return patientId;
+    }
+
+    public String getGoogleEventId() {
+        return googleEventId;
+    }
+
+    public void setGoogleEventId(String googleEventId) {
+        this.googleEventId = googleEventId;
     }
 }

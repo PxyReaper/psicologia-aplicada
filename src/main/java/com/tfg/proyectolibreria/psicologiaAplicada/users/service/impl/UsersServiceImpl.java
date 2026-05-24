@@ -38,7 +38,7 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
-    public UsersEntity register(RegisterRequest request) {
+    public void register(RegisterRequest request) {
         String rawPassword = generatePassword();
         UsersEntity entity = new UsersEntity(
                 null,
@@ -51,11 +51,10 @@ public class UsersServiceImpl implements UsersService {
                 true,
                 null
         );
-        UsersEntity saved = usersRepository.save(entity);
+        usersRepository.save(entity);
         eventPublisher.publishEvent(new UserCreatedEvent(
-                saved.getEmail(), saved.getName(), saved.getSurname(), rawPassword
+                entity.getEmail(), entity.getName(), entity.getSurname(), rawPassword
         ));
-        return saved;
     }
 
     private String generatePassword() {
