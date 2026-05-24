@@ -1,16 +1,16 @@
 # Psicología Aplicada
 
-Aplicación Spring Boot para la gestión de pacientes y sesiones en una práctica de psicología. Integración con Google Calendar para la creación automática de eventos de sesión.
+Aplicación Spring Boot para la gestión de pacientes y sesiones en una práctica de psicología. Integración con Google Calendar para la creación y eliminación automática de eventos de sesión.
 
 ## Stack
 
 | Capa | Tecnología |
 |------|-----------|
-| Lenguaje | Java 21 |
+| Lenguaje | Java 21 (Eclipse Temurin) |
 | Framework | Spring Boot 3.5.3 |
 | Organización | Spring Modulith |
 | Base de datos | MySQL 8 |
-| Calendar API | Google Calendar (cuenta de servicio) |
+| Calendar API | Google Calendar (cuenta de servicio v3 REST) |
 | Contenedor | Docker + GraalVM Native Image |
 | Hilos virtuales | `spring.threads.virtual.enabled: true` |
 
@@ -20,19 +20,22 @@ Organización por módulos de dominio:
 
 ```
 kernel/        → Interfaces compartidas (Patient, PatientAccess)
-patients/      → CRUD de pacientes
-session/       → CRUD de sesiones + publicación de eventos de dominio
+patients/      → CRUD de pacientes + alta/baja
+session/       → CRUD de sesiones
 observations/  → Consulta de observaciones por paciente
-calendar/      → Escucha eventos de dominio y crea eventos en Google Calendar (async)
+calendar/      → Servicio asíncrono de Google Calendar (CalendarAsyncService)
+auth/          → Autenticación JWT + registro de usuarios
+users/         → Gestión de usuarios del sistema
 web/           → Manejador global de excepciones
 ```
 
-Los módulos se comunican a través de la API definida en `kernel/` y mediante eventos de dominio (Spring `ApplicationEventPublisher`).
+Los módulos se comunican a través de la API definida en `kernel/`. Las operaciones de Google Calendar se ejecutan de forma asíncrona mediante `CalendarAsyncService` (con `@Async` y `CompletableFuture`), sin eventos de dominio.
 
 ## Prerrequisitos
 
-- **Java 21+** (solo para desarrollo local con Maven)
+- **Java 21+** (Eclipse Temurin JDK 21, instalado en `C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot`)
 - **Maven** o usar `./mvnw`
+- `JAVA_HOME` debe apuntar al JDK 21
 - **MySQL 8** corriendo en `localhost:3306`
 - **Cuenta de servicio de Google Cloud** con Calendar API habilitada
 - **Docker Desktop** (solo para ejecución con contenedor)
@@ -132,19 +135,43 @@ La aplicación arranca en `http://localhost:8080/api`.
 
 ## Endpoints
 
+### Pacientes
+
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `POST` | `/api/patients` | Crear paciente |
-| `POST` | `/api/session` | Crear sesión (publica evento → Google Calendar asíncrono) |
+| `POST` | `/api/patients` | Crear paciente (campo `observation` opcional) |
+| `PUT` | `/api/patients/{id}` | Actualizar paciente (si se envía `observation`, se añade a la tabla observations) |
+| `POST` | `/api/patients/{id}/discharge` | Dar de baja (asigna `endDate = today`) |
+
+### Sesiones
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/api/session` | Crear sesión. `CalendarAsyncService` crea el evento en Google Calendar y guarda el `googleEventId` |
+| `PUT` | `/api/session/{id}` | Actualizar sesión. `CalendarAsyncService` borra el evento anterior (por `eventId` o búsqueda por fecha) y crea el nuevo |
+| `DELETE` | `/api/session/{id}` | Eliminar sesión. `CalendarAsyncService` borra el evento de Google Calendar por `eventId` |
+
+### Observaciones
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
 | `GET` | `/api/observations/patients?rangeStart=&rangeEnd=` | Pacientes activos con observaciones en un rango |
+
+### Autenticación
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Registrar usuario (retorna `201 Created` sin datos del usuario) |
+| `POST` | `/auth/login` | Iniciar sesión (retorna JWT token) |
 
 ## Estructura de Tablas
 
 | Tabla | Columnas principales |
 |-------|---------------------|
 | `patients` | `id`, `name`, `surname`, `start_date`, `end_date`, `birthday`, `cell_phone`, `genre` |
-| `session` | `id`, `session_date`, `session_date_end`, `observation`, `observation_summary`, `pay`, `id_patient` |
+| `session` | `id`, `session_date`, `session_date_end`, `observation`, `observation_summary`, `pay`, `id_patient`, `google_event_id` |
 | `observations` | `id`, `observation`, `id_patient` |
+| `users` | `id`, `email`, `username`, `password`, `name`, `surname`, `role`, `enabled`, `created_at` |
 
 No hay relaciones JPA (`@ManyToOne`). Las referencias entre tablas son columnas `Long`.
 
@@ -153,6 +180,23 @@ No hay relaciones JPA (`@ManyToOne`). Las referencias entre tablas son columnas 
 - Las credenciales de la BD y de Google Cloud se inyectan vía variables de entorno
 - El archivo JSON de la cuenta de servicio de Google está excluido de Git (`.gitignore`)
 - `spring-security` está como dependencia pero no completamente configurado
+
+## Google Calendar — Flujo Asíncrono
+
+Las operaciones con Google Calendar se ejecutan mediante `CalendarAsyncService` (en `calendar/`), un componente con métodos `@Async` que corre en un hilo separado. No utiliza eventos de dominio.
+
+| Operación | BD (síncrono) | Calendar (asíncrono vía CalendarAsyncService) |
+|-----------|---------------|------------------------------------------------|
+| `POST /session` | Guarda sesión | Crea evento en Google Calendar, guarda `google_event_id` en la entidad |
+| `PUT /session/{id}` | Actualiza sesión | Borra evento anterior (por `eventId` almacenado, o busca por fecha como fallback). Crea nuevo evento y actualiza `google_event_id` |
+| `DELETE /session/{id}` | Elimina sesión | Borra evento de Google Calendar por `eventId` |
+
+## Observaciones al Crear/Actualizar Paciente
+
+El DTO `PatientsRequestDTO` incluye un campo opcional `observation`. Si se envía:
+
+- **Creación**: se publica `PatientCreatedEvent` → `PatientCreatedEventListener` crea la observación
+- **Actualización**: se publica `PatientUpdatedEvent` → el mismo listener crea una nueva observación (no reemplaza existentes)
 
 ## Testing
 
