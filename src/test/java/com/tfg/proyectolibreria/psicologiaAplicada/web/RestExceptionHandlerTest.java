@@ -22,4 +22,13 @@ class RestExceptionHandlerTest {
         assertThat(response.getBody()).containsKey("message");
         assertThat(response.getBody().get("message")).isEqualTo("Invalid input");
     }
+
+    @Test
+    void handleException_shouldReturnInternalServerError() {
+        Exception ex = new RuntimeException("Unexpected error");
+
+        ResponseEntity<Void> response = handler.handleException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

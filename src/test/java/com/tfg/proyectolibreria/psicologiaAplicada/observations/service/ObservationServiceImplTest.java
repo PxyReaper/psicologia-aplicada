@@ -5,13 +5,16 @@ import com.tfg.proyectolibreria.psicologiaAplicada.kernel.PatientAccess;
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.ObservationsEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.dto.PatientObservationsDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.repository.ObservationsRepository;
-import com.tfg.proyectolibreria.psicologiaAplicada.observations.service.ObservationService;
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.service.impl.ObservationServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,24 +45,51 @@ class ObservationServiceImplTest {
 
         ObservationsEntity obs = new ObservationsEntity(null, "Test observation", 1L);
 
-        when(patientAccess.findActivePatientsInRange(any(), any())).thenReturn(List.of(patient));
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Patient> patientPage = new PageImpl<>(List.of(patient), pageable, 1);
+
+        when(patientAccess.findActivePatientsInRange(any(), any(), any(Pageable.class))).thenReturn(patientPage);
         when(observationsRepository.findByPatientIdIn(any())).thenReturn(List.of(obs));
 
-        List<PatientObservationsDTO> result = observationService.getActivePatientsWithObservations(
-                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31));
+        Page<PatientObservationsDTO> result = observationService.getActivePatientsWithObservations(
+                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31), pageable);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).patient().getId()).isEqualTo(1L);
-        assertThat(result.get(0).observations()).hasSize(1);
+        assertThat(result.getContent().get(0).patient().getId()).isEqualTo(1L);
+        assertThat(result.getContent().get(0).observations()).hasSize(1);
     }
 
     @Test
     void getActivePatientsWithObservations_shouldReturnEmptyWhenNoPatients() {
-        when(patientAccess.findActivePatientsInRange(any(), any())).thenReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Patient> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
-        List<PatientObservationsDTO> result = observationService.getActivePatientsWithObservations(
-                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31));
+        when(patientAccess.findActivePatientsInRange(any(), any(), any(Pageable.class))).thenReturn(emptyPage);
+
+        Page<PatientObservationsDTO> result = observationService.getActivePatientsWithObservations(
+                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31), pageable);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getActivePatientsWithObservations_shouldReturnPatientWithoutObservations() {
+        Patient patient = new Patient() {
+            @Override public Long getId() { return 1L; }
+            @Override public String getName() { return "John"; }
+            @Override public String getSurname() { return "Doe"; }
+        };
+
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Patient> patientPage = new PageImpl<>(List.of(patient), pageable, 1);
+
+        when(patientAccess.findActivePatientsInRange(any(), any(), any(Pageable.class))).thenReturn(patientPage);
+        when(observationsRepository.findByPatientIdIn(any())).thenReturn(List.of());
+
+        Page<PatientObservationsDTO> result = observationService.getActivePatientsWithObservations(
+                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31), pageable);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().get(0).observations()).isEmpty();
     }
 }

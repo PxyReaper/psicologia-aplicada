@@ -23,11 +23,11 @@ public class PatientsServiceImpl implements PatientsService {
         PatientsEntity patient = new PatientsEntity(null, requestDTO.name(), requestDTO.surname(), LocalDate.now(), null,
                 requestDTO.birthDay(), requestDTO.cellPhone(), requestDTO.genre());
 
-        patientsRepository.save(patient);
+        PatientsEntity saved = patientsRepository.save(patient);
 
         eventPublisher.publishEvent(new PatientCreatedEvent(
-                patient.getId(),
-                patient.getName() + " " + patient.getSurname(),
+                saved.getId(),
+                saved.getName() + " " + saved.getSurname(),
                 requestDTO.observation()
         ));
     }

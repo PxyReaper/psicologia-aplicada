@@ -1,12 +1,19 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.session.service.impl;
 
 import com.tfg.proyectolibreria.psicologiaAplicada.calendar.CalendarAsyncService;
+import com.tfg.proyectolibreria.psicologiaAplicada.kernel.Patient;
 import com.tfg.proyectolibreria.psicologiaAplicada.kernel.PatientAccess;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.SessionEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.dto.SessionRequestDTO;
+import com.tfg.proyectolibreria.psicologiaAplicada.session.dto.SessionWithPatientDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.repository.SessionRepository;
 import com.tfg.proyectolibreria.psicologiaAplicada.session.service.SessionService;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class SessionServiceImpl implements SessionService {
@@ -96,5 +103,39 @@ public class SessionServiceImpl implements SessionService {
         sessionRepository.deleteById(id);
 
         calendarAsyncService.deleteEvent(eventId);
+    }
+
+    @Override
+    public List<SessionWithPatientDTO> findByDate(LocalDate date) {
+        List<SessionEntity> sessions = sessionRepository.findBySessionDateBetween(
+                date.atStartOfDay(),
+                date.atTime(LocalTime.MAX)
+        );
+
+        List<Long> patientIds = sessions.stream()
+                .map(SessionEntity::getPatientId)
+                .distinct()
+                .toList();
+
+        List<Patient> patients = patientAccess.findByIdIn(patientIds);
+        var patientMap = patients.stream()
+                .collect(Collectors.toMap(Patient::getId, p -> p));
+
+        return sessions.stream()
+                .map(session -> {
+                    Patient patient = patientMap.get(session.getPatientId());
+                    return new SessionWithPatientDTO(
+                            session.getId(),
+                            session.getSessionDate(),
+                            session.getSessionDateEnd(),
+                            session.getObservation(),
+                            session.getObservationSummary(),
+                            session.isPay(),
+                            session.getPatientId(),
+                            patient != null ? patient.getName() : null,
+                            patient != null ? patient.getSurname() : null
+                    );
+                })
+                .toList();
     }
 }

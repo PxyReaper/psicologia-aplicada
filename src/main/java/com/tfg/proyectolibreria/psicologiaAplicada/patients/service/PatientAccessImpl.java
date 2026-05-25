@@ -2,8 +2,9 @@ package com.tfg.proyectolibreria.psicologiaAplicada.patients.service;
 
 import com.tfg.proyectolibreria.psicologiaAplicada.kernel.Patient;
 import com.tfg.proyectolibreria.psicologiaAplicada.kernel.PatientAccess;
-import com.tfg.proyectolibreria.psicologiaAplicada.patients.PatientsEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.repository.PatientsRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -25,9 +26,15 @@ public class PatientAccessImpl implements PatientAccess {
     }
 
     @Override
-    public List<Patient> findActivePatientsInRange(LocalDate rangeStart, LocalDate rangeEnd) {
-        return patientsRepository.findActiveInRange(rangeStart, rangeEnd).stream()
+    public List<Patient> findByIdIn(List<Long> ids) {
+        return patientsRepository.findByIdIn(ids).stream()
                 .map(p -> (Patient) p)
                 .toList();
+    }
+
+    @Override
+    public Page<Patient> findActivePatientsInRange(LocalDate rangeStart, LocalDate rangeEnd, Pageable pageable) {
+        return patientsRepository.findActiveInRange(rangeStart, rangeEnd, pageable)
+                .map(p -> (Patient) p);
     }
 }

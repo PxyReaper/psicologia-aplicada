@@ -9,8 +9,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,10 +37,10 @@ class PatientsRepositoryTest {
         LocalDate rangeStart = LocalDate.of(2024, 1, 1);
         LocalDate rangeEnd = LocalDate.of(2024, 12, 31);
 
-        List<PatientsEntity> result = patientsRepository.findActiveInRange(rangeStart, rangeEnd);
+        var result = patientsRepository.findActiveInRange(rangeStart, rangeEnd, PageRequest.of(0, 20));
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("John");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("John");
     }
 
     @Test
@@ -53,10 +54,10 @@ class PatientsRepositoryTest {
         LocalDate rangeStart = LocalDate.of(2024, 2, 1);
         LocalDate rangeEnd = LocalDate.of(2024, 7, 1);
 
-        List<PatientsEntity> result = patientsRepository.findActiveInRange(rangeStart, rangeEnd);
+        var result = patientsRepository.findActiveInRange(rangeStart, rangeEnd, PageRequest.of(0, 20));
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("Jane");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Jane");
     }
 
     @Test
@@ -70,7 +71,7 @@ class PatientsRepositoryTest {
         LocalDate rangeStart = LocalDate.of(2024, 1, 1);
         LocalDate rangeEnd = LocalDate.of(2024, 12, 31);
 
-        List<PatientsEntity> result = patientsRepository.findActiveInRange(rangeStart, rangeEnd);
+        var result = patientsRepository.findActiveInRange(rangeStart, rangeEnd, PageRequest.of(0, 20));
 
         assertThat(result).isEmpty();
     }

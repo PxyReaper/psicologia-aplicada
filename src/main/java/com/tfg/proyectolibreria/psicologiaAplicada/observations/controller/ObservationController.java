@@ -2,13 +2,15 @@ package com.tfg.proyectolibreria.psicologiaAplicada.observations.controller;
 
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.dto.PatientObservationsDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.observations.service.ObservationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/observations")
@@ -21,9 +23,10 @@ public class ObservationController {
     }
 
     @GetMapping("/patients")
-    public List<PatientObservationsDTO> getActivePatientsWithObservations(
+    public Page<PatientObservationsDTO> getActivePatientsWithObservations(
             @RequestParam LocalDate rangeStart,
-            @RequestParam LocalDate rangeEnd) {
-        return observationService.getActivePatientsWithObservations(rangeStart, rangeEnd);
+            @RequestParam LocalDate rangeEnd,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return observationService.getActivePatientsWithObservations(rangeStart, rangeEnd, pageable);
     }
 }

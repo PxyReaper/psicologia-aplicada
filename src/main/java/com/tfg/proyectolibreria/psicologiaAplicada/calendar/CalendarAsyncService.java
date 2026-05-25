@@ -1,9 +1,7 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.calendar;
 
-import com.tfg.proyectolibreria.psicologiaAplicada.session.repository.SessionRepository;
+import com.tfg.proyectolibreria.psicologiaAplicada.kernel.CalendarEventStore;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +11,12 @@ import java.time.LocalDateTime;
 @Slf4j
 public class CalendarAsyncService {
 
-
-
     private final GoogleCalendarService googleCalendarService;
-    private final SessionRepository sessionRepository;
+    private final CalendarEventStore calendarEventStore;
 
-    public CalendarAsyncService(GoogleCalendarService googleCalendarService, SessionRepository sessionRepository) {
+    public CalendarAsyncService(GoogleCalendarService googleCalendarService, CalendarEventStore calendarEventStore) {
         this.googleCalendarService = googleCalendarService;
-        this.sessionRepository = sessionRepository;
+        this.calendarEventStore = calendarEventStore;
     }
 
     @Async
@@ -31,11 +27,7 @@ public class CalendarAsyncService {
         String eventId = googleCalendarService.createSessionEvent(patientFullName, sessionDateTime, sessionDateTimeEnd);
 
         if (eventId != null) {
-            sessionRepository.findById(sessionId).ifPresent(session -> {
-                session.setGoogleEventId(eventId);
-                sessionRepository.save(session);
-                log.info("Stored googleEventId {} for session {}", eventId, sessionId);
-            });
+            calendarEventStore.storeEventId(sessionId, eventId);
         }
     }
 
@@ -58,11 +50,7 @@ public class CalendarAsyncService {
         String newEventId = googleCalendarService.createSessionEvent(patientFullName, sessionDateTime, sessionDateTimeEnd);
 
         if (newEventId != null) {
-            sessionRepository.findById(sessionId).ifPresent(session -> {
-                session.setGoogleEventId(newEventId);
-                sessionRepository.save(session);
-                log.info("Updated googleEventId {} for session {}", newEventId, sessionId);
-            });
+            calendarEventStore.storeEventId(sessionId, newEventId);
         }
     }
 

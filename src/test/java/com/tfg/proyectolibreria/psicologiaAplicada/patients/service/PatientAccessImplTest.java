@@ -9,6 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -55,12 +59,27 @@ class PatientAccessImplTest {
         PatientsEntity entity = new PatientsEntity(1L, "Jane", "Doe",
                 LocalDate.of(2024, 3, 1), null, LocalDate.of(1992, 5, 10),
                 "987654321", Genre.FEMENINO);
-        when(patientsRepository.findActiveInRange(any(), any())).thenReturn(List.of(entity));
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<PatientsEntity> page = new PageImpl<>(List.of(entity), pageable, 1);
+        when(patientsRepository.findActiveInRange(any(), any(), any(Pageable.class))).thenReturn(page);
 
-        List<Patient> result = patientAccess.findActivePatientsInRange(
-                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31));
+        Page<Patient> result = patientAccess.findActivePatientsInRange(
+                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31), pageable);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("Jane");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Jane");
+    }
+
+    @Test
+    void findByIdIn_shouldReturnPatients() {
+        PatientsEntity entity = new PatientsEntity(1L, "John", "Doe",
+                LocalDate.of(2024, 1, 1), null, LocalDate.of(1990, 1, 1),
+                "123456789", Genre.MASCULINO);
+        when(patientsRepository.findByIdIn(List.of(1L))).thenReturn(List.of(entity));
+
+        List<Patient> result = patientAccess.findByIdIn(List.of(1L));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getName()).isEqualTo("John");
     }
 }
