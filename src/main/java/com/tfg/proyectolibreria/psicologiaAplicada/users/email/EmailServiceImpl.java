@@ -46,10 +46,10 @@ public class EmailServiceImpl implements EmailService {
                     "password", rawPassword
             ));
             String body = templateEngine.process("email/password-email", context);
-            log.debug("Rendered email body: {}", body);
+            log.info("Rendered email body length: {} chars", body != null ? body.length() : 0);
 
-            helper.addInline("logo", new ClassPathResource("static/Logo.jpeg"));
             helper.setText(body, true);
+            helper.addInline("logo", new ClassPathResource("static/Logo.jpeg"));
 
             mailSender.send(message);
             log.info("Password email sent to {}", to);
