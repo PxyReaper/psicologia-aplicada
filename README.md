@@ -19,7 +19,7 @@ Aplicación Spring Boot para la gestión de pacientes y sesiones en una práctic
 Organización por módulos de dominio:
 
 ```
-kernel/        → Interfaces compartidas (Patient, PatientAccess)
+kernel/        → Interfaces compartidas (Patient, PatientAccess, CalendarEventStore, ObservationStore)
 patients/      → CRUD de pacientes + alta/baja
 session/       → CRUD de sesiones
 observations/  → Consulta de observaciones por paciente
@@ -142,13 +142,14 @@ La aplicación arranca en `http://localhost:8080/api`.
 | `POST` | `/api/patients` | Crear paciente (campo `observation` opcional) |
 | `PUT` | `/api/patients/{id}` | Actualizar paciente (si se envía `observation`, se añade a la tabla observations) |
 | `POST` | `/api/patients/{id}/discharge` | Dar de baja (asigna `endDate = today`) |
+| `GET` | `/api/patients/{id}` | Obtener paciente por ID (incluye lista de observaciones) |
 
 ### Sesiones
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `POST` | `/api/session` | Crear sesión. `CalendarAsyncService` crea el evento en Google Calendar y guarda el `googleEventId` |
-| `PUT` | `/api/session/{id}` | Actualizar sesión. `CalendarAsyncService` borra el evento anterior (por `eventId` o búsqueda por fecha) y crea el nuevo |
+| `PUT` | `/api/session/{id}` | Actualizar sesión. `CalendarAsyncService` actualiza el evento existente en Google Calendar vía `PUT` (no borra + crea) |
 | `DELETE` | `/api/session/{id}` | Eliminar sesión. `CalendarAsyncService` borra el evento de Google Calendar por `eventId` |
 
 ### Observaciones
@@ -163,6 +164,7 @@ La aplicación arranca en `http://localhost:8080/api`.
 |--------|----------|-------------|
 | `POST` | `/auth/register` | Registrar usuario (retorna `201 Created` sin datos del usuario) |
 | `POST` | `/auth/login` | Iniciar sesión (retorna JWT token) |
+| `POST` | `/auth/logout` | Cerrar sesión — invalida el token incrementando `tokenVersion` del usuario |
 
 ## Estructura de Tablas
 
@@ -171,24 +173,32 @@ La aplicación arranca en `http://localhost:8080/api`.
 | `patients` | `id`, `name`, `surname`, `start_date`, `end_date`, `birthday`, `cell_phone`, `genre` |
 | `session` | `id`, `session_date`, `session_date_end`, `observation`, `observation_summary`, `pay`, `id_patient`, `google_event_id` |
 | `observations` | `id`, `observation`, `id_patient` |
-| `users` | `id`, `email`, `username`, `password`, `name`, `surname`, `role`, `enabled`, `created_at` |
+| `users` | `id`, `email`, `username`, `password`, `name`, `surname`, `role`, `enabled`, `created_at`, `token_version` |
 
 No hay relaciones JPA (`@ManyToOne`). Las referencias entre tablas son columnas `Long`.
 
 ## Seguridad
 
+- Autenticación con JWT (HMAC-SHA256) vía `spring-security` OAuth2 Resource Server
+- Login retorna un token JWT con claims: `sub` (email), `role`, `tokenVersion`
+- Cada token lleva un `tokenVersion` embebido que se valida contra la BD en cada petición
+- Al cerrar sesión se incrementa `tokenVersion` del usuario, invalidando todos sus tokens anteriores
+- Los endpoints `/auth/login` y `/auth/logout` son públicos (`permitAll()`)
+- El resto requiere rol `ADMIN` o `PSYCHOLOGIST`
+- `TokenVersionValidator` maneja de forma segura el claim numérico usando `instanceof Number` (Nimbus decodifica enteros JSON como `Long`)
 - Las credenciales de la BD y de Google Cloud se inyectan vía variables de entorno
 - El archivo JSON de la cuenta de servicio de Google está excluido de Git (`.gitignore`)
-- `spring-security` está como dependencia pero no completamente configurado
 
 ## Google Calendar — Flujo Asíncrono
 
 Las operaciones con Google Calendar se ejecutan mediante `CalendarAsyncService` (en `calendar/`), un componente con métodos `@Async` que corre en un hilo separado. No utiliza eventos de dominio.
 
+El guardado del `googleEventId` tras crear/actualizar un evento se realiza a través de la interfaz `CalendarEventStore` (en `kernel/`). `CalendarAsyncService` depende de esta interfaz, no de `SessionRepository` ni de `SessionServiceImpl`, evitando así dependencias circulares entre los módulos `calendar` y `session`. La implementación reside en `session/service/impl/CalendarEventStoreImpl`.
+
 | Operación | BD (síncrono) | Calendar (asíncrono vía CalendarAsyncService) |
 |-----------|---------------|------------------------------------------------|
-| `POST /session` | Guarda sesión | Crea evento en Google Calendar, guarda `google_event_id` en la entidad |
-| `PUT /session/{id}` | Actualiza sesión | Borra evento anterior (por `eventId` almacenado, o busca por fecha como fallback). Crea nuevo evento y actualiza `google_event_id` |
+| `POST /session` | Guarda sesión | Crea evento en Google Calendar, guarda `google_event_id` vía `CalendarEventStore` |
+| `PUT /session/{id}` | Actualiza sesión | Actualiza el evento en Google Calendar in-place (vía `PUT`). Si no hay `googleEventId`, busca por fecha/nombre y actualiza; si no existe, crea uno nuevo |
 | `DELETE /session/{id}` | Elimina sesión | Borra evento de Google Calendar por `eventId` |
 
 ## Observaciones al Crear/Actualizar Paciente

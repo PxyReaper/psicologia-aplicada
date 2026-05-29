@@ -12,4 +12,6 @@ public interface ObservationsRepository extends JpaRepository<ObservationsEntity
     List<ObservationsEntity> findByPatientIdIn(List<Long> patientIds);
 
     Optional<ObservationsEntity> findFirstByPatientId(Long patientId);
+
+    List<ObservationsEntity> findByPatientId(Long patientId);
 }

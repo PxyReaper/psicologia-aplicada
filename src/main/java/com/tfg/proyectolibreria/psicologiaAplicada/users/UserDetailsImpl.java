@@ -18,6 +18,7 @@ public class UserDetailsImpl implements UserDetails {
     private final String surname;
     private final UserRole role;
     private final boolean enabled;
+    private final int tokenVersion;
 
     public UserDetailsImpl(UsersEntity entity) {
         this.id = entity.getId();
@@ -28,6 +29,7 @@ public class UserDetailsImpl implements UserDetails {
         this.surname = entity.getSurname();
         this.role = entity.getRole();
         this.enabled = entity.isEnabled();
+        this.tokenVersion = entity.getTokenVersion();
     }
 
     @Override
@@ -68,5 +70,9 @@ public class UserDetailsImpl implements UserDetails {
 
     public UserRole getRole() {
         return role;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
     }
 }

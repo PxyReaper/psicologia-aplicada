@@ -40,17 +40,21 @@ public class CalendarAsyncService {
                                      LocalDateTime oldSessionDateTimeEnd) {
         log.info("Updating calendar for session {} (patient {})", sessionId, patientFullName);
 
-        if (oldEventId != null) {
-            googleCalendarService.deleteSessionEvent(oldEventId);
-        } else {
-            log.warn("No googleEventId stored for session {}, falling back to search by time", sessionId);
-            googleCalendarService.deleteSessionEvent(oldPatientFullName, oldSessionDateTime, oldSessionDateTimeEnd);
+        String resolvedEventId = oldEventId;
+
+        if (resolvedEventId == null) {
+            log.warn("No googleEventId stored for session {}, searching by date/name...", sessionId);
+            resolvedEventId = googleCalendarService.findSessionEventId(oldPatientFullName, oldSessionDateTime);
         }
 
-        String newEventId = googleCalendarService.createSessionEvent(patientFullName, sessionDateTime, sessionDateTimeEnd);
-
-        if (newEventId != null) {
-            calendarEventStore.storeEventId(sessionId, newEventId);
+        if (resolvedEventId != null) {
+            googleCalendarService.updateSessionEvent(resolvedEventId, patientFullName, sessionDateTime, sessionDateTimeEnd);
+        } else {
+            log.warn("No existing event found, creating new one for session {}", sessionId);
+            String newEventId = googleCalendarService.createSessionEvent(patientFullName, sessionDateTime, sessionDateTimeEnd);
+            if (newEventId != null) {
+                calendarEventStore.storeEventId(sessionId, newEventId);
+            }
         }
     }
 

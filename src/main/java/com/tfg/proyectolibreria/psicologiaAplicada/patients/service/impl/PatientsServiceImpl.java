@@ -1,11 +1,14 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.patients.service.impl;
 
+import com.tfg.proyectolibreria.psicologiaAplicada.kernel.ObservationStore;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.PatientsEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestDTO;
+import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsResponseDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientCreatedEvent;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientUpdatedEvent;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.repository.PatientsRepository;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.service.PatientsService;
+import com.tfg.proyectolibreria.psicologiaAplicada.web.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,24 @@ import java.time.LocalDate;
 public class PatientsServiceImpl implements PatientsService {
     private final PatientsRepository patientsRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ObservationStore observationStore;
+
+    @Override
+    public PatientsResponseDTO findById(Long id) {
+        PatientsEntity patient = patientsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found with id: " + id));
+        return new PatientsResponseDTO(
+                patient.getId(),
+                patient.getName(),
+                patient.getSurname(),
+                patient.getStartDate(),
+                patient.getEndDate(),
+                patient.getBirthDay(),
+                patient.getCellPhone(),
+                patient.getGenre(),
+                observationStore.findObservationsByPatientId(id)
+        );
+    }
 
     @Override
     public void save(PatientsRequestDTO requestDTO) {

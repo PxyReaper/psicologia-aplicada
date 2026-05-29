@@ -37,6 +37,8 @@ public class UsersEntity {
 
     private LocalDateTime createdAt;
 
+    private int tokenVersion = 0;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

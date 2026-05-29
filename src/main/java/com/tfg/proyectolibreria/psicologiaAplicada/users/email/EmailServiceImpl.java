@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,9 @@ public class EmailServiceImpl implements EmailService {
                     "password", rawPassword
             ));
             String body = templateEngine.process("email/password-email", context);
+            log.debug("Rendered email body: {}", body);
 
+            helper.addInline("logo", new ClassPathResource("static/Logo.jpeg"));
             helper.setText(body, true);
 
             mailSender.send(message);

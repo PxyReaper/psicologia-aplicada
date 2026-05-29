@@ -70,4 +70,21 @@ class AuthControllerTest {
 
         verify(usersService).register(any(RegisterRequest.class));
     }
+
+    @Test
+    void logout_shouldIncrementTokenVersion() throws Exception {
+        when(jwtUtils.getSubject("test-jwt-token")).thenReturn("user@test.com");
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer test-jwt-token"))
+                .andExpect(status().isOk());
+
+        verify(usersService).incrementTokenVersion("user@test.com");
+    }
+
+    @Test
+    void logout_shouldReturnOk_whenNoAuthHeader() throws Exception {
+        mockMvc.perform(post("/auth/logout"))
+                .andExpect(status().isOk());
+    }
 }

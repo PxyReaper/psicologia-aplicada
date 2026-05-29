@@ -28,11 +28,11 @@ Package-per-module layout under `src/main/java/com/tfg/proyectolibreria/psicolog
 |---------|------|
 | `patients` | `PatientsEntity`, `PatientsRepository` (JpaRepository), `PatientsService`/`PatientsServiceImpl`, `PatientsController`, `Genre` enum + converter. Publishes `PatientCreatedEvent` and `PatientUpdatedEvent` |
 | `session` | `SessionEntity` (with `patientId` Long field + `googleEventId`), `SessionRepository`, `SessionService`/`SessionServiceImpl`, `SessionController`. Calendar operations via `CalendarAsyncService` |
-| `observations` | `ObservationsEntity`, `ObservationsRepository` (`findByPatientIdIn`, `findFirstByPatientId`), `ObservationService`/`ObservationServiceImpl`, `ObservationController`. Listens to `PatientCreatedEvent` and `PatientUpdatedEvent` |
+| `observations` | `ObservationsEntity`, `ObservationsRepository` (`findByPatientIdIn`, `findFirstByPatientId`, `findByPatientId`), `ObservationService`/`ObservationServiceImpl`, `ObservationController`. Listens to `PatientCreatedEvent` and `PatientUpdatedEvent` |
 | `calendar` | `GoogleCalendarService`/`GoogleCalendarServiceImpl`, `GoogleCalendarApiClient`, `CalendarAsyncService` (with `@Async` methods) |
 | `users` | `UsersEntity`, `UsersRepository`, `UsersService`/`UsersServiceImpl`, `UserDetailsImpl`. Publishes `UserCreatedEvent` for email notifications |
-| `auth` | `AuthController` with `POST /auth/register` and `POST /auth/login`. Register returns `201 Created` with no body |
-| `kernel` | Shared interfaces: `Patient`, `PatientAccess` |
+| `auth` | `AuthController` with `POST /auth/register`, `POST /auth/login`, and `POST /auth/logout`. `TokenBlacklist` (in-memory token blacklist). `BlacklistJwtDecoder` wraps NimbusJwtDecoder to reject blacklisted tokens. `SecurityConfig` configures OAuth2 resource server with JWT bearer tokens |
+| `kernel` | Shared interfaces: `Patient`, `PatientAccess`, `CalendarEventStore`, `ObservationStore` |
 
 Entity relationships: `SessionEntity` and `ObservationsEntity` reference patients via a `Long patientId` column (not `@ManyToOne`).
 
@@ -65,44 +65,41 @@ Spring Data JPA method names must match field names exactly. For a field `patien
 - Enums stored as string columns via custom `AttributeConverter` (`autoApply = true`).
 - Constructor injection with `private final` fields for services and controllers.
 - **Calendar Async**: Google Calendar operations use `CalendarAsyncService` with `@Async` methods. No domain events for calendar. The service runs in a separate thread and does not block the HTTP response.
+- **Calendar Event Store**: `CalendarAsyncService` persists `googleEventId` via the kernel interface `CalendarEventStore` (not `SessionRepository` directly). The implementation `CalendarEventStoreImpl` lives in `session/service/impl/` and breaks the circular dependency between `calendar` and `session`. Never inject `SessionRepository` into the `calendar` module.
 - **Patient Domain Events**: `PatientCreatedEvent` and `PatientUpdatedEvent` are published by the `patients` module. The `observations` module listens via `PatientCreatedEventListener` to optionally create observations.
 - **Async Processing**: Use `@Async` on service methods for fire-and-forget side effects (Google Calendar API calls, email sending). Enable with `@EnableAsync` on the application class.
 - Event records live in `patients/event/` package; listeners live in the consuming module (e.g., `observations/listener/`).
+- **JWT Token Blacklist**: `TokenBlacklist` stores blacklisted JWT tokens in an in-memory `Set<String>` (backed by `ConcurrentHashMap.newKeySet()`). `BlacklistJwtDecoder` wraps `NimbusJwtDecoder` in the `jwtDecoder()` bean to check the blacklist on every request. The blacklist is reset on application restart.
+- **Logout endpoint**: `POST /auth/logout` is `permitAll()` so the endpoint is accessible. The token is extracted from the `Authorization` header (optional — missing header is silently ignored).
 
 ## Application Flows
 
 ### Module Dependency Map
 
 ```
-                    ┌──────────────┐
-                    │   kernel     │
-                    │  Patient     │
-                    │  PatientAccess│
-                    └──────┬───────┘
-                           │ implements
-               ┌───────────┴───────────┐
-               │                       │
-     ┌─────────▼───────┐   ┌──────────▼──────────┐
-     │ patients        │   │  PatientAccessImpl  │
-     │ (owns the data) │   │  (bridge service)   │
-     │ publishes events│   └──────────┬───────────┘
-     └──────┬──────────┘             │ injected via kernel API
-            │ events                 │
-            ▼                        ▼
-     ┌──────────┐            ┌──────────────────┐
-     │observations│          │ session          │
-     │            │          │                  │
-     │listens to  │          │ save/update/     │
-     │Patient*Evt │          │ delete calls     │
-     └────────────┘          │ CalendarAsyncSvc │
-                             └────────┬─────────┘
-                                      │ @Async
-                                      ▼
-                              ┌──────────────────┐
-                              │ calendar         │
-                              │ GoogleCalendarSvc│
-                              │ CalendarAsyncSvc │
-                              └──────────────────┘
+                    ┌──────────────────────┐
+                    │       kernel         │
+                    │  Patient             │
+                    │  PatientAccess       │
+                    │  CalendarEventStore  │
+                    └──┬───────┬───────┬───┘
+                       │       │       │
+              ┌────────▼──┐ ┌──▼────┐ ┌▼──────────────┐
+              │ patients  │ │session│ │CalendarEvent  │
+              │(owns data)│ │       │ │StoreImpl      │
+              │publishes  │ │calls  │ │(session mod)  │
+              │events     │ │Calend.│ │               │
+              └───┬───────┘ │Async  │ │injects        │
+                  │events   │Svc    │ │SessionRepo    │
+                  ▼         └──┬────┘ └───────────────┘
+           ┌──────────┐       │                 ▲
+           │observat. │       │ @Async          │ implements
+           │listens to│       ▼                 │
+           │Pat*Evt   │ ┌──────────────┐        │
+           └──────────┘ │ calendar     ├────────┘
+                        │GoogleCalSvc │
+                        │CalAsyncSvc  │
+                        └──────────────┘
 ```
 
 The `session` module calls `CalendarAsyncService` directly (no domain events). Calendar operations are `@Async` and run in a separate thread. `ObservationsRepository` has `findFirstByPatientId` for upsert patterns.
@@ -204,6 +201,34 @@ GET /api/observations/patients?rangeStart=2026-01-01&rangeEnd=2026-12-31
 ]
 ```
 
+### Flow 4: Logout
+
+```
+POST /api/auth/logout
+Authorization: Bearer <token>
+```
+
+**Step-by-step**:
+
+1. `AuthController.logout()` receives the `Authorization` header
+2. Extracts the token string (after `"Bearer "` prefix)
+3. Calls `JwtUtils.getSubject(token)` to extract the email from the JWT payload (no signature verification needed — just decodes)
+4. Calls `UsersService.incrementTokenVersion(email)` — increments the user's `tokenVersion` in the database
+5. **Response**: `200 OK`
+
+**Subsequent requests with the same token**:
+
+1. `BearerTokenAuthenticationFilter` extracts the token from the request
+2. `NimbusJwtDecoder` validates the JWT (signature, expiry, issuer)
+3. `TokenVersionValidator` checks the JWT's `tokenVersion` claim against the user's current DB value:
+   - Reads `tokenVersion` from the JWT as `Number` (Nimbus stores JSON integers as `Long`) and calls `.intValue()` to avoid `ClassCastException`
+   - Looks up the user by `token.getSubject()`
+   - Compares `impl.getTokenVersion() == tokenVersion`
+   - If mismatch: returns `OAuth2TokenValidatorResult.failure()` → Spring Security returns `401 Unauthorized`
+   - If match: returns `success()` → request proceeds normally
+
+> **Token version invalidation**: The `tokenVersion` field is an `int` on the `users` table (default 0). It is embedded as a JWT claim at token creation. On logout, the counter is incremented in the DB, making all previously-issued tokens for that user invalid. This is persisted across restarts (unlike the older in-memory blacklist approach). The `TokenVersionValidator` safely handles the `Long` → `int` conversion via `instanceof Number` because `NimbusJwtDecoder` deserializes JSON integers as `Long`. Skip to entry `2026-05-28` for the full implementation details.
+
 ### Data Model
 
 No JPA relationships (`@ManyToOne`/`@OneToMany`). All cross-table references are `Long` columns.
@@ -225,6 +250,7 @@ No JPA relationships (`@ManyToOne`/`@OneToMany`). All cross-table references are
 | `PUT` | `/api/session/{id}` | `SessionRequestDTO` | `200 OK` | session |
 | `DELETE` | `/api/session/{id}` | — | `204 No Content` | session |
 | `GET` | `/api/observations/patients` | `rangeStart`, `rangeEnd` (query params) | `200 OK` + `List<PatientObservationsDTO>` | observations |
+| `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` header | `200 OK` | auth |
 
 ### Validation & Error Handling
 
@@ -234,6 +260,37 @@ No JPA relationships (`@ManyToOne`/`@OneToMany`). All cross-table references are
 - **No Bean Validation** (`@Valid`, `@NotBlank`, etc.) on DTOs currently
 
 ## Change Log
+
+### 2026-05-28
+- Added `tokenVersion` field (`int`, default 0) to `UsersEntity` so token invalidation is persisted in the DB.
+- Copied `tokenVersion` into `UserDetailsImpl` and exposed via `getTokenVersion()`.
+- Embedded `tokenVersion` as a JWT claim in `JwtUtils.generateToken()` (reads from `UserDetailsImpl`).
+- Created `TokenVersionValidator` — an `OAuth2TokenValidator<Jwt>` that compares the JWT's `tokenVersion` claim against the user's current DB value; rejects with `token_version_mismatch` on mismatch.
+- Uses `token.getClaim("tokenVersion") instanceof Number` to safely handle the claim (Nimbus decodes JSON integers as `Long`, not `Integer`).
+- Added `incrementTokenVersion(String email)` to `UsersService`/`UsersServiceImpl` — increments the user's `tokenVersion` in the DB on logout.
+- Changed `POST /auth/logout` to call `incrementTokenVersion(email)` via `JwtUtils.getSubject()` instead of an in-memory blacklist.
+- Removed `TokenBlacklist` and `BlacklistJwtDecoder` (replaced by token-version approach).
+- Fixed `SecurityConfig.jwtDecoder()` to inject `UsersService` (not `UsersRepository`) into `TokenVersionValidator`, avoiding a Spring Modulith boundary violation.
+- Added `ObservationStore` kernel interface (`kernel/ObservationStore`) with `findObservationsByPatientId(Long)`.
+- Created `ObservationStoreImpl` in `observations/service/impl/` implementing `ObservationStore`.
+- Added `findByPatientId(Long)` to `ObservationsRepository`.
+- Extended `PatientsResponseDTO` with `List<String> observations` field.
+- Updated `PatientsServiceImpl.findById()` to fetch observations via `ObservationStore`.
+- Updated `GET /api/patients/{id}` response to include observations array.
+- Fixed `CalendarAsyncService.updateAndStoreEvent()` — uses Google Calendar API's `PUT` endpoint (`updateEvent`) to update the existing event in-place instead of delete + create, preventing duplicate calendar events when a session is rescheduled.
+- Added `findSessionEventId(String, LocalDateTime)` to `GoogleCalendarService`/`GoogleCalendarServiceImpl` — searches events by patient name + date, returns the `eventId` if found.
+- Rewrote `CalendarAsyncService.updateAndStoreEvent()` fallback (when `oldEventId` is null): now searches via `findSessionEventId()` and updates in-place, instead of delete + create.
+- Fixed `SessionServiceImpl.update()` — added `updated.setGoogleEventId(existing.getGoogleEventId())` before `save()`. The `SessionEntity` constructor doesn't include `googleEventId`, so `sessionRepository.save(updated)` was overwriting the stored eventId with null via Hibernate's `merge()`, causing `getGoogleEventId()` to always return null on subsequent updates.
+- Fixed `TokenVersionValidator` to safely read `tokenVersion` claim via `instanceof Number` instead of direct auto-unboxing — Nimbus decodes JSON integers as `Long`, not `Integer`, causing `ClassCastException`.
+- Embedded `Logo.jpeg` as inline image in password emails via `MimeMessageHelper.addInline("logo", ...)` and replaced emoji div in template with `<img src="cid:logo">`.
+- Updated `GoogleCalendarServiceImpl.deleteSessionEvent(by search)` to reuse `findSessionEventId()` internally.
+
+### 2026-05-25
+- Added `CalendarEventStore` kernel interface (`kernel/CalendarEventStore`) to break the circular dependency between `calendar` and `session` modules.
+- Created `CalendarEventStoreImpl` in `session/service/impl/` — a separate `@Component` that implements `CalendarEventStore` and injects `SessionRepository` directly.
+- Changed `CalendarAsyncService` to inject `CalendarEventStore` instead of `SessionRepository`.
+- Removed `CalendarEventStore` implementation from `SessionServiceImpl` (no longer implements the interface, no `@Lazy` needed).
+- Added `@NamedInterface("event")` on `patients/event/` and `@NamedInterface("dto")` on `users/dto/` to allow modulith-compliant cross-module access.
 
 ### 2026-05-24
 - Replaced `SessionCalendarEventListener` (domain events) with `CalendarAsyncService` — a dedicated `@Async` service called directly from `SessionServiceImpl`.

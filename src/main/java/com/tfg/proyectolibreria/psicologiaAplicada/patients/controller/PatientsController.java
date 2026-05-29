@@ -1,6 +1,7 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.patients.controller;
 
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestDTO;
+import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsResponseDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.service.PatientsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,11 @@ import java.net.URISyntaxException;
 @RequiredArgsConstructor
 public class PatientsController {
     private final PatientsService patientsService;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PatientsResponseDTO> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(patientsService.findById(id));
+    }
 
     @PostMapping
     public ResponseEntity<Void> save(@RequestBody PatientsRequestDTO patientsRequestDTO) throws URISyntaxException {

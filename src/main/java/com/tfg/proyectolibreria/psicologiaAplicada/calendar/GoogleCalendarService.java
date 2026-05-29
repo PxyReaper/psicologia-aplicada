@@ -7,6 +7,10 @@ public interface GoogleCalendarService {
 
     String createSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);
 
+    void updateSessionEvent(String eventId, String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);
+
+    String findSessionEventId(String patientFullName, LocalDateTime sessionDateTime);
+
     void deleteSessionEvent(String eventId);
 
     void deleteSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd);

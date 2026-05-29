@@ -75,6 +75,7 @@ public class SessionServiceImpl implements SessionService {
                 existing.isPay(),
                 requestDTO.idPatient()
         );
+        updated.setGoogleEventId(existing.getGoogleEventId());
 
         sessionRepository.save(updated);
 

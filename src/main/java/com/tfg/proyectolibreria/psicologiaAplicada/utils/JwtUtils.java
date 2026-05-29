@@ -3,6 +3,7 @@ package com.tfg.proyectolibreria.psicologiaAplicada.utils;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.tfg.proyectolibreria.psicologiaAplicada.users.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,11 +26,18 @@ public class JwtUtils {
                 .findFirst()
                 .map(GrantedAuthority::getAuthority)
                 .orElse("ROLE_USER");
+
+        int tokenVersion = 0;
+        if (auth.getPrincipal() instanceof UserDetailsImpl userDetails) {
+            tokenVersion = userDetails.getTokenVersion();
+        }
+
         Algorithm algorithm = Algorithm.HMAC256(secret);
         return JWT.create()
                 .withIssuer(issuer)
                 .withSubject(email)
                 .withClaim("role", role)
+                .withClaim("tokenVersion", tokenVersion)
                 .withIssuedAt(new Date())
                 .withExpiresAt(Date.from(Instant.now().plus(4, ChronoUnit.HOURS)))
                 .sign(algorithm);

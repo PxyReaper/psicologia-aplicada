@@ -1,7 +1,9 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.patients.service.impl;
 
+import com.tfg.proyectolibreria.psicologiaAplicada.kernel.ObservationStore;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.PatientsEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestDTO;
+import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsResponseDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.enums.Genre;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientCreatedEvent;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientUpdatedEvent;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +34,9 @@ class PatientsServiceImplTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ObservationStore observationStore;
 
     @InjectMocks
     private PatientsServiceImpl patientsService;
@@ -120,5 +126,29 @@ class PatientsServiceImplTest {
         assertThatThrownBy(() -> patientsService.discharge(99L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Patient not found");
+    }
+
+    @Test
+    void findById_shouldReturnPatientWithObservations() {
+        PatientsEntity entity = new PatientsEntity(1L, "Juan", "Pérez", LocalDate.of(2026, 1, 1), null, LocalDate.of(1990, 5, 15), "612345678", Genre.MASCULINO);
+        when(patientsRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(observationStore.findObservationsByPatientId(1L)).thenReturn(List.of("obs1", "obs2"));
+
+        PatientsResponseDTO result = patientsService.findById(1L);
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Juan");
+        assertThat(result.observations()).containsExactly("obs1", "obs2");
+    }
+
+    @Test
+    void findById_shouldReturnEmptyObservations_whenNoneExist() {
+        PatientsEntity entity = new PatientsEntity(2L, "Ana", "García", LocalDate.of(2026, 2, 1), null, LocalDate.of(1992, 7, 20), "612345679", Genre.FEMENINO);
+        when(patientsRepository.findById(2L)).thenReturn(Optional.of(entity));
+        when(observationStore.findObservationsByPatientId(2L)).thenReturn(List.of());
+
+        PatientsResponseDTO result = patientsService.findById(2L);
+
+        assertThat(result.observations()).isEmpty();
     }
 }

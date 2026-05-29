@@ -51,6 +51,21 @@ public class GoogleCalendarServiceImpl implements GoogleCalendarService {
     }
 
     /**
+     * Updates an existing Google Calendar event with new date/time and patient name.
+     */
+    @Override
+    public void updateSessionEvent(String eventId, String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
+        try {
+            String calendarId = resolveOrCreateCalendar();
+            ObjectNode eventNode = buildEventNode(patientFullName, sessionDateTime, sessionDateTimeEnd);
+            apiClient.updateEvent(calendarId, eventId, eventNode);
+            log.info("Calendar event updated: {} (eventId: {})", patientFullName, eventId);
+        } catch (Exception e) {
+            log.error("Failed to update calendar event: {} (eventId: {})", patientFullName, eventId, e);
+        }
+    }
+
+    /**
      * Deletes a Google Calendar event by its event ID.
      */
     @Override
@@ -65,11 +80,11 @@ public class GoogleCalendarServiceImpl implements GoogleCalendarService {
     }
 
     /**
-     * Deletes a Google Calendar event by searching for it on the session date
-     * matching the patient's full name. Used as fallback when no eventId is stored.
+     * Searches for a Google Calendar event by patient name and session date.
+     * Returns the event ID if found, or null if not found.
      */
     @Override
-    public void deleteSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
+    public String findSessionEventId(String patientFullName, LocalDateTime sessionDateTime) {
         try {
             String calendarId = resolveOrCreateCalendar();
             ZoneId zoneId = ZoneId.of(properties.getTimezone());
@@ -89,10 +104,31 @@ public class GoogleCalendarServiceImpl implements GoogleCalendarService {
                     String summary = item.has("summary") ? item.get("summary").asText() : "";
                     if (expectedSummary.equals(summary)) {
                         String eventId = item.get("id").asText();
-                        apiClient.deleteEvent(calendarId, eventId);
-                        log.info("Deleted calendar event (fallback): {} (eventId: {})", patientFullName, eventId);
+                        log.info("Found calendar event for {}: (eventId: {})", patientFullName, eventId);
+                        return eventId;
                     }
                 }
+            }
+            log.warn("No calendar event found for {} on {}", patientFullName, sessionDateTime.toLocalDate());
+            return null;
+        } catch (Exception e) {
+            log.error("Failed to search calendar event for session: {}", patientFullName, e);
+            return null;
+        }
+    }
+
+    /**
+     * Deletes a Google Calendar event by searching for it on the session date
+     * matching the patient's full name. Used as fallback when no eventId is stored.
+     */
+    @Override
+    public void deleteSessionEvent(String patientFullName, LocalDateTime sessionDateTime, LocalDateTime sessionDateTimeEnd) {
+        try {
+            String eventId = findSessionEventId(patientFullName, sessionDateTime);
+            if (eventId != null) {
+                String calendarId = resolveOrCreateCalendar();
+                apiClient.deleteEvent(calendarId, eventId);
+                log.info("Deleted calendar event (fallback): {} (eventId: {})", patientFullName, eventId);
             }
         } catch (Exception e) {
             log.error("Failed to delete calendar event (fallback) for session: {}", patientFullName, e);

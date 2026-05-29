@@ -1,6 +1,7 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.patients.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Genre {
     MASCULINO("masculino"),
@@ -11,6 +12,8 @@ public enum Genre {
     private Genre(String value){
         this.value = value;
     }
+
+    @JsonValue
     public String getValue(){
         return this.value;
     }

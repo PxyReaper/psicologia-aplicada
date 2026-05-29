@@ -7,9 +7,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +32,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
     @Value("${user.secret}")
     private String privateKey;
@@ -39,12 +42,13 @@ public class SecurityConfig {
     private String domain;
 
     @Bean
-    public SecurityFilterChain configure(HttpSecurity http, UsersService usersService) throws Exception {
+    public SecurityFilterChain configure(HttpSecurity http, UsersService usersService, JwtDecoder jwtDecoder) throws Exception {
         return http
                 .userDetailsService(usersService)
                 .authorizeHttpRequests((authorizeRequests) ->
                         authorizeRequests
                                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/auth/register").hasRole("ADMIN")
                                 .anyRequest().hasAnyRole("ADMIN", "PSYCHOLOGIST")
 
@@ -53,8 +57,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer( oauth ->
-                        oauth.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()).
+                        oauth.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder).
                                 jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                .cors(Customizer.withDefaults())
                 .build();
     }
     @Bean
@@ -66,16 +71,17 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
     @Bean
-    public JwtDecoder jwtDecoder(){
+    public JwtDecoder jwtDecoder(UsersService usersService){
         SecretKey secret = new SecretKeySpec(privateKey.getBytes(),"HmacSHA256");
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(secret).build();
+        NimbusJwtDecoder delegate = NimbusJwtDecoder.withSecretKey(secret).build();
 
-        OAuth2TokenValidator<Jwt> withClock = new DelegatingOAuth2TokenValidator<>(
+        OAuth2TokenValidator<Jwt> validators = new DelegatingOAuth2TokenValidator<>(
                 new JwtTimestampValidator(Duration.ZERO),
-                new JwtIssuerValidator(this.iUser));
+                new JwtIssuerValidator(this.iUser),
+                new TokenVersionValidator(usersService));
 
-        jwtDecoder.setJwtValidator(withClock);
-        return jwtDecoder;
+        delegate.setJwtValidator(validators);
+        return delegate;
     }
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter(){
@@ -95,7 +101,7 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

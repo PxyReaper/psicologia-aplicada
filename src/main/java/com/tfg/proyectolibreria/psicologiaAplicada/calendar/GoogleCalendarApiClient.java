@@ -100,6 +100,20 @@ public class GoogleCalendarApiClient {
     }
 
     /**
+     * PUT /calendars/{calendarId}/events/{eventId}
+     * Updates an existing event with new data.
+     */
+    public JsonNode updateEvent(String calendarId, String eventId, ObjectNode eventNode) {
+        String responseBody = restClient.put()
+                .uri("/calendars/{calendarId}/events/{eventId}", calendarId, eventId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(eventNode)
+                .retrieve()
+                .body(String.class);
+        return parseJson(responseBody);
+    }
+
+    /**
      * Sends a POST request with a JSON body to the given URI and returns the parsed response.
      */
     private JsonNode postJson(String uri, ObjectNode body, Object... uriVariables) {

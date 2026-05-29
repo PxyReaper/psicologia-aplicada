@@ -13,6 +13,17 @@ class RestExceptionHandlerTest {
     private final RestExceptionHandler handler = new RestExceptionHandler();
 
     @Test
+    void handleResourceNotFoundException_shouldReturnNotFound() {
+        ResourceNotFoundException ex = new ResourceNotFoundException("Entity not found");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleResourceNotFoundException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKey("message");
+        assertThat(response.getBody().get("message")).isEqualTo("Entity not found");
+    }
+
+    @Test
     void handleIllegalArgumentException_shouldReturnBadRequest() {
         IllegalArgumentException ex = new IllegalArgumentException("Invalid input");
 
