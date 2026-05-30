@@ -1,6 +1,7 @@
 package com.tfg.proyectolibreria.psicologiaAplicada.patients.service.impl;
 
 import com.tfg.proyectolibreria.psicologiaAplicada.kernel.ObservationStore;
+import com.tfg.proyectolibreria.psicologiaAplicada.kernel.SessionStore;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.PatientsEntity;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsRequestDTO;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.dto.PatientsResponseDTO;
@@ -8,6 +9,7 @@ import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientCreated
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.event.PatientUpdatedEvent;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.repository.PatientsRepository;
 import com.tfg.proyectolibreria.psicologiaAplicada.patients.service.PatientsService;
+import com.tfg.proyectolibreria.psicologiaAplicada.session.service.SessionService;
 import com.tfg.proyectolibreria.psicologiaAplicada.web.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,6 +23,8 @@ public class PatientsServiceImpl implements PatientsService {
     private final PatientsRepository patientsRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObservationStore observationStore;
+    private final SessionStore sessionStore;
+    private final SessionService sessionService;
 
     @Override
     public PatientsResponseDTO findById(Long id) {
@@ -35,7 +39,8 @@ public class PatientsServiceImpl implements PatientsService {
                 patient.getBirthDay(),
                 patient.getCellPhone(),
                 patient.getGenre(),
-                observationStore.findObservationsByPatientId(id)
+                observationStore.findObservationsByPatientId(id),
+                sessionStore.findSessionsByPatientId(id)
         );
     }
 
@@ -95,5 +100,6 @@ public class PatientsServiceImpl implements PatientsService {
         );
 
         patientsRepository.save(discharged);
+        sessionService.deleteUpcomingSessionsByPatientId(id);
     }
 }

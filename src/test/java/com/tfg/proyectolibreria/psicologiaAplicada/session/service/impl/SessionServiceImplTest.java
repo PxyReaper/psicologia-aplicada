@@ -45,7 +45,7 @@ class SessionServiceImplTest {
     @Test
     void save_shouldCallRepositorySaveAndAsyncCalendarService() {
         LocalDateTime now = LocalDateTime.now();
-        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "obs", "summary", 1L);
+        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "obs", "summary", 1L, false);
         when(patientAccess.findById(1L)).thenReturn(Optional.of(new com.tfg.proyectolibreria.psicologiaAplicada.kernel.Patient() {
             @Override
             public Long getId() { return 1L; }
@@ -120,7 +120,7 @@ class SessionServiceImplTest {
     @Test
     void save_shouldThrowWhenPatientNotFound() {
         LocalDateTime now = LocalDateTime.now();
-        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "obs", "summary", 99L);
+        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "obs", "summary", 99L, false);
         when(patientAccess.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> sessionService.save(request))
@@ -131,7 +131,7 @@ class SessionServiceImplTest {
     @Test
     void update_shouldCallRepositorySaveAndAsyncCalendarService() {
         LocalDateTime now = LocalDateTime.now();
-        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "updated-obs", "updated-summary", 1L);
+        SessionRequestDTO request = new SessionRequestDTO(now, now.plusHours(1), "updated-obs", "updated-summary", 1L, false);
 
         SessionEntity existing = new SessionEntity(1L, now.minusDays(1), now.minusDays(1).plusHours(1), "old-obs", "old-summary", false, 1L);
         existing.setGoogleEventId("event-123");
@@ -163,7 +163,7 @@ class SessionServiceImplTest {
     void update_shouldThrowWhenSessionNotFound() {
         when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> sessionService.update(99L, new SessionRequestDTO(null, null, null, null, 1L)))
+        assertThatThrownBy(() -> sessionService.update(99L, new SessionRequestDTO(null, null, null, null, 1L, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Session not found");
     }

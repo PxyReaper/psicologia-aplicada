@@ -86,7 +86,7 @@ class PatientsControllerTest {
 
     @Test
     void findById_shouldReturnPatient() throws Exception {
-        PatientsResponseDTO dto = new PatientsResponseDTO(1L, "Juan", "Pérez", LocalDate.of(2026, 1, 1), null, LocalDate.of(1990, 5, 15), "612345678", Genre.MASCULINO, List.of("obs1", "obs2"));
+        PatientsResponseDTO dto = new PatientsResponseDTO(1L, "Juan", "Pérez", LocalDate.of(2026, 1, 1), null, LocalDate.of(1990, 5, 15), "612345678", Genre.MASCULINO, List.of("obs1", "obs2"), List.of());
 
         when(patientsService.findById(1L)).thenReturn(dto);
 

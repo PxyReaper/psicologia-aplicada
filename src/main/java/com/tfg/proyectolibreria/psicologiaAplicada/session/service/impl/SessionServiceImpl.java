@@ -11,6 +11,7 @@ import com.tfg.proyectolibreria.psicologiaAplicada.session.service.SessionServic
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +42,7 @@ public class SessionServiceImpl implements SessionService {
                 requestDTO.dateSessionEnd(),
                 requestDTO.observatory(),
                 requestDTO.observatorySummary(),
-                false,
+                requestDTO.pay() != null ? requestDTO.pay() : false,
                 requestDTO.idPatient()
         );
 
@@ -72,7 +73,7 @@ public class SessionServiceImpl implements SessionService {
                 requestDTO.dateSessionEnd(),
                 requestDTO.observatory(),
                 requestDTO.observatorySummary(),
-                existing.isPay(),
+                requestDTO.pay() != null ? requestDTO.pay() : existing.isPay(),
                 requestDTO.idPatient()
         );
         updated.setGoogleEventId(existing.getGoogleEventId());
@@ -104,6 +105,18 @@ public class SessionServiceImpl implements SessionService {
         sessionRepository.deleteById(id);
 
         calendarAsyncService.deleteEvent(eventId);
+    }
+
+    @Override
+    public void deleteUpcomingSessionsByPatientId(Long patientId) {
+        List<SessionEntity> upcoming = sessionRepository.findByPatientIdAndSessionDateGreaterThanEqual(
+                patientId, LocalDateTime.now());
+        for (SessionEntity session : upcoming) {
+            if (session.getGoogleEventId() != null) {
+                calendarAsyncService.deleteEvent(session.getGoogleEventId());
+            }
+            sessionRepository.delete(session);
+        }
     }
 
     @Override

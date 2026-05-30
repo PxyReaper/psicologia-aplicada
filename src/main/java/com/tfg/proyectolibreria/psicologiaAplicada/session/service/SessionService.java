@@ -13,5 +13,7 @@ public interface SessionService {
 
     void delete(Long id);
 
+    void deleteUpcomingSessionsByPatientId(Long patientId);
+
     List<SessionWithPatientDTO> findByDate(LocalDate date);
 }

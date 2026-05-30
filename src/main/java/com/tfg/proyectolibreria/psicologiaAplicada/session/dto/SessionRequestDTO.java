@@ -4,5 +4,5 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.LocalDateTime;
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record SessionRequestDTO(LocalDateTime dateSession, LocalDateTime dateSessionEnd, String observatory, String observatorySummary, Long idPatient) {
+public record SessionRequestDTO(LocalDateTime dateSession, LocalDateTime dateSessionEnd, String observatory, String observatorySummary, Long idPatient, Boolean pay) {
 }

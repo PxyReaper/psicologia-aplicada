@@ -12,4 +12,6 @@ public interface SessionRepository extends JpaRepository<SessionEntity,Long> {
     List<SessionEntity> findByPatientId(Long patientId);
 
     List<SessionEntity> findBySessionDateBetween(LocalDateTime start, LocalDateTime end);
+
+    List<SessionEntity> findByPatientIdAndSessionDateGreaterThanEqual(Long patientId, LocalDateTime date);
 }
